@@ -30,6 +30,9 @@ jobs:
           echo "Found Android project in: $PROJECT_DIR"
           cd "$PROJECT_DIR"
 
+          # Create missing hidden .env.example if skipped during drag-and-drop upload
+          touch .env.example
+
           if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             chmod +x gradlew
             ./gradlew assembleRelease \
