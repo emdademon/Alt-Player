@@ -18,17 +18,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Generate Release Keystore
         run: |
           keytool -genkey -v -keystore altplayer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias altplayer -storepass altplayer123 -keypass altplayer123 -dname "CN=Md. Emdadul Hoque, OU=AltPlayer, O=AltPlayer, L=Chattogram, C=BD"
 
       - name: Build Signed Release APK
         run: |
-          chmod +x gradlew || true
-          gradle assembleRelease \
+          chmod +x gradlew
+          ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=$(pwd)/altplayer-release.jks \
             -Pandroid.injected.signing.store.password=altplayer123 \
             -Pandroid.injected.signing.key.alias=altplayer \
