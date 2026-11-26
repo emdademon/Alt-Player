@@ -22,18 +22,32 @@ jobs:
         run: |
           keytool -genkey -v -keystore altplayer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias altplayer -storepass altplayer123 -keypass altplayer123 -dname "CN=Md. Emdadul Hoque, OU=AltPlayer, O=AltPlayer, L=Chattogram, C=BD"
 
-      - name: Build Signed Release APK
+      - name: Locate Project & Build Signed APK
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$(pwd)/altplayer-release.jks \
-            -Pandroid.injected.signing.store.password=altplayer123 \
-            -Pandroid.injected.signing.key.alias=altplayer \
-            -Pandroid.injected.signing.key.password=altplayer123
+          KEYSTORE_PATH=$(pwd)/altplayer-release.jks
+          BUILD_FILE=$(find . -maxdepth 3 -name "settings.gradle*" | head -n 1)
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Found Android project in: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            chmod +x gradlew
+            ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
+              -Pandroid.injected.signing.store.password=altplayer123 \
+              -Pandroid.injected.signing.key.alias=altplayer \
+              -Pandroid.injected.signing.key.password=altplayer123
+          else
+            gradle assembleRelease \
+              -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
+              -Pandroid.injected.signing.store.password=altplayer123 \
+              -Pandroid.injected.signing.key.alias=altplayer \
+              -Pandroid.injected.signing.key.password=altplayer123
+          fi
 
       - name: Rename APK to Alt-Player
         run: |
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          APK_PATH=$(find . -path "*/build/outputs/apk/release/*.apk" | head -n 1)
           cp "$APK_PATH" "Alt-Player-v1.0.apk"
 
       - name: Upload Signed APK & Keystore
