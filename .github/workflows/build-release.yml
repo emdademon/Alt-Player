@@ -1,0 +1,48 @@
+name: Build Signed Alt Player APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Release Keystore
+        run: |
+          keytool -genkey -v -keystore altplayer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias altplayer -storepass altplayer123 -keypass altplayer123 -dname "CN=Md. Emdadul Hoque, OU=AltPlayer, O=AltPlayer, L=Chattogram, C=BD"
+
+      - name: Build Signed Release APK
+        run: |
+          chmod +x gradlew || true
+          gradle assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/altplayer-release.jks \
+            -Pandroid.injected.signing.store.password=altplayer123 \
+            -Pandroid.injected.signing.key.alias=altplayer \
+            -Pandroid.injected.signing.key.password=altplayer123
+
+      - name: Rename APK to Alt-Player
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          cp "$APK_PATH" "Alt-Player-v1.0.apk"
+
+      - name: Upload Signed APK & Keystore
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alt-Player-Release-Package
+          path: |
+            Alt-Player-v1.0.apk
+            altplayer-release.jks
