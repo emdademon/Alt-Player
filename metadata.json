@@ -1,0 +1,6 @@
+{
+  "name": "Alt Player",
+  "description": "Offline, ad-free, privacy-first local video player with folder browsing, MX-style gestures, private PIN vault, audio/SRT track switching, and media info.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
