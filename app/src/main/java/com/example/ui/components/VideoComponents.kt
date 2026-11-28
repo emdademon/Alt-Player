@@ -1335,7 +1335,7 @@ fun PrivacyShieldSheet(
                 ) {
                     Icon(Icons.Rounded.Shield, contentDescription = null, tint = ElectricCyan)
                     Text(
-                        text = "Manifest permissions stripped: INTERNET, ACCESS_NETWORK_STATE",
+                        text = "Network is limited to GitHub updates and theme colors",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextPrimary
                     )

@@ -95,7 +95,7 @@ fun ActivationScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0C1A16), ObsidianBlack, ObsidianBlack)
+                    colors = listOf(SoftCharcoal, ObsidianBlack, ObsidianBlack)
                 )
             )
             .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -125,7 +125,7 @@ fun ActivationScreen(
                     text = if (trialExpired) {
                         "Your 3-day free trial has ended. Enter an activation code to continue enjoying Alt Player Pro."
                     } else {
-                        "Studio-grade offline video & audio playback with zero ads, zero telemetry, and zero internet access."
+                        "Studio-grade local video & audio playback with zero ads and zero telemetry. Optional network access is limited to GitHub updates and theme colors."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
@@ -271,7 +271,7 @@ fun ActivationScreen(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "Verified 100% offline • No network permission exists",
+                        text = "Local media stays private • No telemetry or media uploads",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary
                     )

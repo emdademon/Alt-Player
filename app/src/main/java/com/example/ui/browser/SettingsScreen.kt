@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +66,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.BuildConfig
 import com.example.R
 import com.example.data.DefaultOrientation
 import com.example.data.LicenseTier
@@ -72,6 +74,7 @@ import com.example.data.ProActivationResult
 import com.example.data.ProLicenseManager
 import com.example.data.ProUnlockType
 import com.example.data.ResumeBehavior
+import com.example.data.UpdateStatus
 import com.example.ui.components.AltPlayerLogo
 import com.example.ui.theme.AmoledBlack
 import com.example.ui.theme.CardOutline
@@ -101,6 +104,10 @@ fun SettingsScreen(
     onClearPin: () -> Unit,
     onActivateProCode: (String, (ProActivationResult) -> Unit) -> Unit,
     onGenerateBuyerCode: () -> String,
+    onToggleRemoteTheme: (Boolean) -> Unit,
+    onRefreshRemoteTheme: () -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onDownloadAndInstallUpdate: () -> Unit,
     onBack: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
@@ -143,7 +150,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0C1A16), AmoledBlack, AmoledBlack)
+                        colors = listOf(ElevatedNavy, AmoledBlack, AmoledBlack)
                     )
                 )
                 .padding(innerPadding)
@@ -444,6 +451,176 @@ fun SettingsScreen(
                     }
                 }
 
+                // Remote Theme
+                SettingsSectionHeader(
+                    icon = Icons.Rounded.Refresh,
+                    title = "Appearance & Theme"
+                )
+                Surface(
+                    color = DeepNavySurface,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, CardOutline)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (uiState.themePreferences.useRemoteTheme) {
+                                        "Remote theme: ${uiState.themePreferences.activeTheme.themeName}"
+                                    } else {
+                                        "Midnight Indigo (built-in)"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = if (uiState.themePreferences.useRemoteTheme) {
+                                        "Sync colors from GitHub theme.json"
+                                    } else {
+                                        "Remote theme sync is disabled"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextMuted
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Switch(
+                                checked = uiState.themePreferences.useRemoteTheme,
+                                onCheckedChange = onToggleRemoteTheme,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = AmoledBlack,
+                                    checkedTrackColor = ElectricCyan
+                                ),
+                                modifier = Modifier.testTag("switch_remote_theme")
+                            )
+                        }
+
+                        HorizontalDivider(color = CardOutline)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = uiState.themeSyncMessage
+                                    ?: uiState.themePreferences.lastError
+                                    ?: "Remote theme contains colors only; local media stays on device.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (uiState.themePreferences.lastError != null) {
+                                    CoralError
+                                } else {
+                                    TextMuted
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(
+                                onClick = onRefreshRemoteTheme,
+                                enabled = uiState.themePreferences.useRemoteTheme &&
+                                    !uiState.isRefreshingTheme,
+                                modifier = Modifier.testTag("refresh_remote_theme")
+                            ) {
+                                if (uiState.isRefreshingTheme) {
+                                    CircularProgressIndicator(
+                                        color = ElectricCyan,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    text = if (uiState.isRefreshingTheme) "Syncing" else "Sync now",
+                                    color = ElectricCyan
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // GitHub OTA Updates
+                SettingsSectionHeader(
+                    icon = Icons.Rounded.VerifiedUser,
+                    title = "App Updates"
+                )
+                Surface(
+                    color = DeepNavySurface,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, CardOutline)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "GitHub OTA updates",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = uiState.appUpdate.message
+                                ?: "Check GitHub for a signed Alt Player APK. No media data is uploaded.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (uiState.appUpdate.status == UpdateStatus.ERROR) {
+                                CoralError
+                            } else {
+                                TextMuted
+                            }
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (uiState.appUpdate.status == UpdateStatus.DOWNLOADING) {
+                                CircularProgressIndicator(
+                                    color = ElectricCyan,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                            }
+                            TextButton(
+                                onClick = onCheckForUpdates,
+                                enabled = uiState.appUpdate.status != UpdateStatus.CHECKING &&
+                                    uiState.appUpdate.status != UpdateStatus.DOWNLOADING,
+                                modifier = Modifier.testTag("check_for_updates")
+                            ) {
+                                Text("Check", color = ElectricCyan)
+                            }
+                            if (uiState.appUpdate.availableUpdate != null) {
+                                Button(
+                                    onClick = onDownloadAndInstallUpdate,
+                                    enabled = uiState.appUpdate.status != UpdateStatus.DOWNLOADING,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = ElectricCyan,
+                                        contentColor = AmoledBlack
+                                    ),
+                                    modifier = Modifier.testTag("download_update_button")
+                                ) {
+                                    Text(
+                                        text = if (uiState.appUpdate.status == UpdateStatus.DOWNLOADING) {
+                                            "Downloading ${uiState.appUpdate.downloadProgress}%"
+                                        } else {
+                                            "Download & Install"
+                                        },
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // About Card (tap version 5x to reveal offline Buyer Code Generator)
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
@@ -493,7 +670,7 @@ fun SettingsScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = "v1.1 • ${stringResource(R.string.offline_privacy_badge)}",
+                                        text = "v${BuildConfig.VERSION_NAME} • ${stringResource(R.string.offline_privacy_badge)}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = EmeraldOffline
                                     )

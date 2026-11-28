@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Alt Player</string>
-    <string name="offline_privacy_badge">100% Offline • Zero Network</string>
+    <string name="offline_privacy_badge">Local Media Private • No Telemetry</string>
     <string name="search_videos_hint">Search folders or videos…</string>
     <string name="clear_search">Clear search</string>
     <string name="open_video_file">Open file</string>
@@ -15,7 +15,7 @@
     <string name="tab_all_videos">Videos</string>
     <string name="tab_audio">Audio</string>
     <string name="permission_title">Access Local Media in Alt Player</string>
-    <string name="permission_description">Alt Player scans only your device storage locally to organize videos (MP4, MKV, AVI, WebM) and audio (MP3, M4A, AAC, WAV, FLAC, OGG, Opus). No internet permission exists—your library never leaves your device.</string>
+    <string name="permission_description">Alt Player scans only your device storage locally to organize videos (MP4, MKV, AVI, WebM) and audio (MP3, M4A, AAC, WAV, FLAC, OGG, Opus). Your media and library never leave this device. Network access is limited to optional GitHub updates and theme sync.</string>
     <string name="grant_permission">Allow Media Access</string>
     <string name="pick_video_directly">Open Media File</string>
     <string name="partial_access_banner">Showing selected media only. Grant full access to browse all folders and audio.</string>
@@ -50,7 +50,7 @@
     <string name="new_badge">NEW</string>
     <string name="hidden_badge">HIDDEN</string>
     <string name="privacy_sheet_title">Alt Player • Offline &amp; Private</string>
-    <string name="privacy_sheet_body">Alt Player strips INTERNET and ACCESS_NETWORK_STATE permissions at build time. Zero analytics, zero telemetry, zero ads.</string>
+    <string name="privacy_sheet_body">Alt Player plays local media entirely on this device with zero analytics, zero telemetry, and zero ads. Network access is used only for GitHub OTA updates and optional theme colors; no media or library data is uploaded.</string>
     <string name="settings_title">Settings</string>
     <string name="private_vault_title">Private Vault</string>
     <string name="toggle_layout_view">Switch list or grid view</string>
@@ -64,7 +64,7 @@
     <string name="menu_move_to_vault">Move to Private Vault</string>
     <string name="menu_export_from_vault">Export to Shared Storage</string>
     <string name="menu_properties">Properties / Media Info</string>
-    <string name="about_footer_text">Alt Player v1.1 • Developed by Md. Emdadul Hoque • 100% Offline &amp; Ad-Free</string>
+    <string name="about_footer_text">Alt Player v1.2 • Developed by Md. Emdadul Hoque • Local Media Private &amp; Ad-Free</string>
     <string name="pip_mode">Picture-in-Picture</string>
     <string name="background_play">Background Audio Play</string>
     <string name="decoder_switch">Switch Decoder</string>

@@ -111,7 +111,7 @@ fun PrivateVaultScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0C1A16), AmoledBlack, AmoledBlack)
+                        colors = listOf(ElevatedNavy, AmoledBlack, AmoledBlack)
                     )
                 )
                 .padding(innerPadding)
