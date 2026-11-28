@@ -2,6 +2,7 @@ package com.example
 
 import com.example.data.MediaStoreVideoRepository
 import com.example.data.PlaybackPreferencesRepository
+import com.example.data.LicenseTier
 import com.example.data.ProActivationResult
 import com.example.data.ProLicenseManager
 import com.example.data.ProLicenseState
@@ -94,14 +95,23 @@ class AltPlayerUnitTest {
             ProActivationResult.Success(ProUnlockType.FAMILY_VIP, "ALT-FAMILY-VIP"),
             vipResult
         )
+        assertEquals(
+            LicenseTier.FAMILY_VIP.value,
+            (vipResult as ProActivationResult.Success).licenseTier
+        )
 
         val generated = ProLicenseManager.generateBuyerCode("AB")
         assertTrue(generated.startsWith("ALT-PRO-AB"))
         assertEquals(12, generated.length)
         assertTrue(ProLicenseManager.isValidBuyerCode(generated))
+        val buyerResult = ProLicenseManager.validateCode(generated.lowercase())
         assertEquals(
             ProActivationResult.Success(ProUnlockType.PRO_CODE, generated),
-            ProLicenseManager.validateCode(generated.lowercase())
+            buyerResult
+        )
+        assertEquals(
+            LicenseTier.PRO_BUYER.value,
+            (buyerResult as ProActivationResult.Success).licenseTier
         )
 
         val tampered = generated.dropLast(1) + if (generated.last() == '2') '3' else '2'
@@ -132,6 +142,8 @@ class AltPlayerUnitTest {
             activatedCode = "ALT-FAMILY-VIP",
             hasSeenActivation = true
         )
+        assertEquals(LicenseTier.FAMILY_VIP.value, lifetime.resolvedLicenseTier())
+        assertTrue(lifetime.isUnlocked)
         assertTrue(lifetime.isLifetimePro())
         assertTrue(lifetime.isAccessGranted(afterThreeDays))
         assertFalse(lifetime.shouldShowActivationGate(afterThreeDays))

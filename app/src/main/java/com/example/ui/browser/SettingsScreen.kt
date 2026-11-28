@@ -48,6 +48,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.DefaultOrientation
+import com.example.data.LicenseTier
 import com.example.data.ProActivationResult
 import com.example.data.ProLicenseManager
 import com.example.data.ProUnlockType
@@ -102,11 +104,35 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
+    val canUseDeveloperGenerator =
+        uiState.proLicense.isUnlocked &&
+            uiState.proLicense.licenseTier == LicenseTier.FAMILY_VIP.value
     var aboutTapCount by remember { mutableIntStateOf(0) }
     var showDevCodeGenerator by remember { mutableStateOf(false) }
-    var generatedCode by remember { mutableStateOf(onGenerateBuyerCode()) }
+    var generatedCode by remember { mutableStateOf("") }
     var copiedNotice by remember { mutableStateOf(false) }
     var showEnterCodeDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(canUseDeveloperGenerator) {
+        if (!canUseDeveloperGenerator) {
+            // Do not retain a developer panel, tap count, or generated code after the tier changes.
+            aboutTapCount = 0
+            showDevCodeGenerator = false
+            generatedCode = ""
+            copiedNotice = false
+        }
+    }
+
+    fun onAboutTap() {
+        if (!canUseDeveloperGenerator) return
+        aboutTapCount++
+        if (aboutTapCount >= 5) {
+            showDevCodeGenerator = true
+            if (generatedCode.isBlank()) {
+                generatedCode = onGenerateBuyerCode()
+            }
+        }
+    }
 
     Scaffold(
         containerColor = AmoledBlack,
@@ -442,12 +468,13 @@ fun SettingsScreen(
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable {
-                                        aboutTapCount++
-                                        if (aboutTapCount >= 5) {
-                                            showDevCodeGenerator = true
+                                    .then(
+                                        if (canUseDeveloperGenerator) {
+                                            Modifier.clickable { onAboutTap() }
+                                        } else {
+                                            Modifier
                                         }
-                                    }
+                                    )
                                     .testTag("about_version_tap_target")
                             ) {
                                 Text(
@@ -466,7 +493,7 @@ fun SettingsScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = "v1.0 • ${stringResource(R.string.offline_privacy_badge)}",
+                                        text = "v1.1 • ${stringResource(R.string.offline_privacy_badge)}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = EmeraldOffline
                                     )
@@ -481,15 +508,14 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextPrimary,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable {
-                                aboutTapCount++
-                                if (aboutTapCount >= 5) {
-                                    showDevCodeGenerator = true
-                                }
+                            modifier = if (canUseDeveloperGenerator) {
+                                Modifier.clickable { onAboutTap() }
+                            } else {
+                                Modifier
                             }
                         )
 
-                        if (showDevCodeGenerator) {
+                        if (canUseDeveloperGenerator && showDevCodeGenerator) {
                             HorizontalDivider(color = CardOutline)
                             Surface(
                                 color = DeepNavySurface,

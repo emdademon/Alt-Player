@@ -64,7 +64,7 @@
     <string name="menu_move_to_vault">Move to Private Vault</string>
     <string name="menu_export_from_vault">Export to Shared Storage</string>
     <string name="menu_properties">Properties / Media Info</string>
-    <string name="about_footer_text">Alt Player v1.0 • Developed by Md. Emdadul Hoque • 100% Offline &amp; Ad-Free</string>
+    <string name="about_footer_text">Alt Player v1.1 • Developed by Md. Emdadul Hoque • 100% Offline &amp; Ad-Free</string>
     <string name="pip_mode">Picture-in-Picture</string>
     <string name="background_play">Background Audio Play</string>
     <string name="decoder_switch">Switch Decoder</string>

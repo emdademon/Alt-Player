@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.DefaultOrientation
 import com.example.data.LibraryTab
+import com.example.data.LicenseTier
 import com.example.data.MediaAccessState
 import com.example.data.MediaStoreVideoRepository
 import com.example.data.PlaybackPreferencesRepository
@@ -247,7 +248,18 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun generateOfflineBuyerCode(): String = ProLicenseManager.generateBuyerCode()
+    /**
+     * The developer generator is an additional defense-in-depth boundary. The Settings screen
+     * does not expose this callback to non-family users, and the ViewModel refuses generation
+     * unless the DataStore-backed tier is FAMILY_VIP as well.
+     */
+    fun generateOfflineBuyerCode(): String {
+        val license = _uiState.value.proLicense
+        if (!license.isUnlocked || license.licenseTier != LicenseTier.FAMILY_VIP.value) {
+            return ""
+        }
+        return ProLicenseManager.generateBuyerCode()
+    }
 
     fun setFolderHidden(bucketId: String, hidden: Boolean) {
         viewModelScope.launch {
