@@ -51,7 +51,10 @@ class PlaybackPreferencesRepository(private val context: Context) {
         val SUBTITLE_FONT_SIZE = stringPreferencesKey("sub_font_size")
         val SUBTITLE_TEXT_COLOR = stringPreferencesKey("sub_text_color")
         val SUBTITLE_BG_OPACITY = floatPreferencesKey("sub_bg_opacity")
+        // PRO_UNLOCK_TYPE is retained as a legacy source for existing installations.
         val PRO_UNLOCK_TYPE = stringPreferencesKey("pro_unlock_type")
+        val PRO_LICENSE_TIER = stringPreferencesKey("pro_license_tier")
+        val PRO_IS_UNLOCKED = booleanPreferencesKey("pro_is_unlocked")
         val PRO_ACTIVATED_CODE = stringPreferencesKey("pro_activated_code")
         val TRIAL_STARTED_AT_MS = longPreferencesKey("trial_started_at_ms")
         val HAS_SEEN_ACTIVATION = booleanPreferencesKey("has_seen_activation")
@@ -91,14 +94,30 @@ class PlaybackPreferencesRepository(private val context: Context) {
             }
         }
 
-        val proUnlockType = prefs[Keys.PRO_UNLOCK_TYPE]?.let {
+        val legacyUnlockType = prefs[Keys.PRO_UNLOCK_TYPE]?.let {
             runCatching { ProUnlockType.valueOf(it) }.getOrNull()
         } ?: ProUnlockType.NONE
+        val activatedCode = prefs[Keys.PRO_ACTIVATED_CODE].orEmpty()
+        val storedTier = LicenseTier.fromStoredValue(prefs[Keys.PRO_LICENSE_TIER])?.value
+        // Older builds stored FAMILY_VIP/PRO_CODE/TRIAL in PRO_UNLOCK_TYPE only. Resolve those
+        // records into the new canonical tier before exposing the state to the UI.
+        val resolvedTier = storedTier
+            ?: legacyUnlockType.licenseTier
+            ?: ProLicenseManager.licenseTierForActivatedCode(activatedCode)
+        val resolvedUnlockType = when (resolvedTier) {
+            LicenseTier.FAMILY_VIP.value -> ProUnlockType.FAMILY_VIP
+            LicenseTier.PRO_BUYER.value -> ProUnlockType.PRO_CODE
+            LicenseTier.TRIAL.value -> ProUnlockType.TRIAL
+            else -> legacyUnlockType
+        }
+        val isUnlocked = prefs[Keys.PRO_IS_UNLOCKED] ?: (resolvedUnlockType != ProUnlockType.NONE)
         val proLicense = ProLicenseState(
-            unlockType = proUnlockType,
-            activatedCode = prefs[Keys.PRO_ACTIVATED_CODE].orEmpty(),
+            unlockType = resolvedUnlockType,
+            activatedCode = activatedCode,
             trialStartedAtMs = prefs[Keys.TRIAL_STARTED_AT_MS] ?: 0L,
-            hasSeenActivation = prefs[Keys.HAS_SEEN_ACTIVATION] ?: false
+            hasSeenActivation = prefs[Keys.HAS_SEEN_ACTIVATION] ?: isUnlocked,
+            licenseTier = resolvedTier,
+            isUnlocked = isUnlocked
         )
 
         PlaybackPreferencesSnapshot(
@@ -180,7 +199,11 @@ class PlaybackPreferencesRepository(private val context: Context) {
         val result = ProLicenseManager.validateCode(rawCode)
         if (result is ProActivationResult.Success) {
             context.altPlayerDataStore.edit { prefs ->
+                // Keep the old enum for compatibility, but make the exact tier and unlock state
+                // explicit for all new activations.
                 prefs[Keys.PRO_UNLOCK_TYPE] = result.unlockType.name
+                prefs[Keys.PRO_LICENSE_TIER] = result.licenseTier
+                prefs[Keys.PRO_IS_UNLOCKED] = true
                 prefs[Keys.PRO_ACTIVATED_CODE] = result.normalizedCode
                 prefs[Keys.HAS_SEEN_ACTIVATION] = true
             }
@@ -195,6 +218,8 @@ class PlaybackPreferencesRepository(private val context: Context) {
                 prefs[Keys.TRIAL_STARTED_AT_MS] = nowMs
             }
             prefs[Keys.PRO_UNLOCK_TYPE] = ProUnlockType.TRIAL.name
+            prefs[Keys.PRO_LICENSE_TIER] = LicenseTier.TRIAL.value
+            prefs[Keys.PRO_IS_UNLOCKED] = true
             prefs[Keys.HAS_SEEN_ACTIVATION] = true
         }
     }
