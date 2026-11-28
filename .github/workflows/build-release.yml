@@ -1,9 +1,12 @@
-name: Build Signed Alt Player APK
+name: Build & Publish Alt Player Release
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,20 +21,23 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Release Keystore
+      - name: Locate Project, Build & Publish Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          keytool -genkey -v -keystore altplayer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias altplayer -storepass altplayer123 -keypass altplayer123 -dname "CN=Md. Emdadul Hoque, OU=AltPlayer, O=AltPlayer, L=Chattogram, C=BD"
+          ROOT_DIR=$(pwd)
+          KEYSTORE_PATH="$ROOT_DIR/altplayer-release.jks"
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            keytool -genkey -v -keystore "$KEYSTORE_PATH" -keyalg RSA -keysize 2048 -validity 10000 -alias altplayer -storepass altplayer123 -keypass altplayer123 -dname "CN=Md. Emdadul Hoque, OU=AltPlayer, O=AltPlayer, L=Chattogram, C=BD"
+          fi
 
-      - name: Locate Project & Build Signed APK
-        run: |
-          KEYSTORE_PATH=$(pwd)/altplayer-release.jks
           BUILD_FILE=$(find . -maxdepth 3 -name "settings.gradle*" | head -n 1)
           PROJECT_DIR=$(dirname "$BUILD_FILE")
-          echo "Found Android project in: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-
-          # Create missing hidden .env.example if skipped during drag-and-drop upload
           touch .env.example
+
+          VERSION_NAME=$(grep -E "versionName\s*=" app/build.gradle* | head -n 1 | sed -E 's/.*versionName\s*=\s*"([^"]+)".*/\1/')
+          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="1.0.1"; fi
 
           if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             chmod +x gradlew
@@ -48,15 +54,12 @@ jobs:
               -Pandroid.injected.signing.key.password=altplayer123
           fi
 
-      - name: Rename APK to Alt-Player
-        run: |
           APK_PATH=$(find . -path "*/build/outputs/apk/release/*.apk" | head -n 1)
-          cp "$APK_PATH" "Alt-Player-v1.0.apk"
+          FINAL_APK="$ROOT_DIR/Alt-Player-v${VERSION_NAME}.apk"
+          cp "$APK_PATH" "$FINAL_APK"
 
-      - name: Upload Signed APK & Keystore
-        uses: actions/upload-artifact@v4
-        with:
-          name: Alt-Player-Release-Package
-          path: |
-            Alt-Player-v1.0.apk
-            altplayer-release.jks
+          gh release delete "v${VERSION_NAME}" --yes --repo "${{ github.repository }}" || true
+          gh release create "v${VERSION_NAME}" "$FINAL_APK" \
+            --title "ALT PLAYER v${VERSION_NAME}" \
+            --notes "Latest update for ALT PLAYER" \
+            --repo "${{ github.repository }}"
