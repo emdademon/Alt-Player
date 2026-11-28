@@ -5,41 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-
-private val AltPlayerDarkColorScheme = darkColorScheme(
-    primary = EmeraldPrimary,
-    onPrimary = ObsidianBlack,
-    primaryContainer = ForestDeep,
-    onPrimaryContainer = OnForestContainer,
-    secondary = EmeraldMid,
-    onSecondary = TextPrimary,
-    secondaryContainer = ForestContainer,
-    onSecondaryContainer = OnForestContainer,
-    tertiary = AmberWarm,
-    onTertiary = ObsidianBlack,
-    background = ObsidianBlack,
-    onBackground = TextPrimary,
-    surface = SoftCharcoal,
-    onSurface = TextPrimary,
-    surfaceVariant = ElevatedCharcoal,
-    onSurfaceVariant = TextSecondary,
-    surfaceContainerLowest = ObsidianBlack,
-    surfaceContainerLow = SoftCharcoal,
-    surfaceContainer = ElevatedCharcoal,
-    surfaceContainerHigh = SurfaceHighlight,
-    surfaceContainerHighest = ColorTokens.SurfaceHighest,
-    outline = SubtleBorder,
-    outlineVariant = ColorTokens.SubtleDivider,
-    error = CoralError,
-    onError = TextPrimary
-)
-
-private object ColorTokens {
-    val SurfaceHighest = Color(0xFF22342F)
-    val SubtleDivider = Color(0xFF16211E)
-}
+import com.example.data.AppThemeConfig
 
 val VeloShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
@@ -51,10 +18,44 @@ val VeloShapes = Shapes(
 
 @Composable
 fun VeloPlayTheme(
+    theme: AppThemeConfig = AppThemeConfig.DEFAULT,
     content: @Composable () -> Unit
 ) {
+    // The outer state holder recomposes this function whenever theme.json changes. Updating the
+    // alias palette before MaterialTheme evaluates its content keeps legacy custom surfaces in
+    // sync with the Material 3 color scheme as well.
+    ThemeColors.apply(theme)
+    val colors = ThemeColors.current
+    val colorScheme = darkColorScheme(
+        primary = colors.primaryAccent,
+        onPrimary = colors.textPrimary,
+        primaryContainer = colors.primaryContainer,
+        onPrimaryContainer = colors.textPrimary,
+        secondary = colors.secondaryAccent,
+        onSecondary = colors.background,
+        secondaryContainer = colors.secondaryContainer,
+        onSecondaryContainer = colors.textPrimary,
+        tertiary = AmberWarm,
+        onTertiary = colors.background,
+        background = colors.background,
+        onBackground = colors.textPrimary,
+        surface = colors.surface,
+        onSurface = colors.textPrimary,
+        surfaceVariant = colors.elevatedSurface,
+        onSurfaceVariant = colors.textSecondary,
+        surfaceContainerLowest = colors.background,
+        surfaceContainerLow = colors.surface,
+        surfaceContainer = colors.elevatedSurface,
+        surfaceContainerHigh = colors.surfaceHighlight,
+        surfaceContainerHighest = colors.surfaceHighlight,
+        outline = colors.border,
+        outlineVariant = colors.border.copy(alpha = 0.7f),
+        error = CoralError,
+        onError = colors.textPrimary
+    )
+
     MaterialTheme(
-        colorScheme = AltPlayerDarkColorScheme,
+        colorScheme = colorScheme,
         typography = VeloTypography,
         shapes = VeloShapes,
         content = content

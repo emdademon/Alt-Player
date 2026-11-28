@@ -1181,7 +1181,7 @@ private fun AudioPlayerStage(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0C1A16), AmoledBlack, Color(0xFF070A09))
+                    colors = listOf(DeepNavySurface, AmoledBlack, AmoledBlack)
                 )
             )
             .windowInsetsPadding(WindowInsets.safeDrawing)

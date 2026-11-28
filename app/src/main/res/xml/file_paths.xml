@@ -3,4 +3,7 @@
     <files-path
         name="private_vault"
         path="private_vault/" />
+    <cache-path
+        name="apk_updates"
+        path="updates/" />
 </paths>

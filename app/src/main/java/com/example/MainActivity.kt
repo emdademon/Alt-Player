@@ -82,7 +82,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val isInPipMode by isInPipModeFlow.collectAsStateWithLifecycle()
-            VeloPlayTheme {
+            val themeState by libraryViewModel.uiState.collectAsStateWithLifecycle()
+            VeloPlayTheme(theme = themeState.themePreferences.activeTheme) {
                 AltPlayerApp(
                     libraryViewModel = libraryViewModel,
                     pendingViewUri = pendingViewUri,
@@ -308,6 +309,10 @@ fun AltPlayerApp(
                 onClearPin = libraryViewModel::clearPrivatePin,
                 onActivateProCode = libraryViewModel::activateProWithCode,
                 onGenerateBuyerCode = libraryViewModel::generateOfflineBuyerCode,
+                onToggleRemoteTheme = libraryViewModel::setRemoteThemeEnabled,
+                onRefreshRemoteTheme = { libraryViewModel.refreshRemoteTheme() },
+                onCheckForUpdates = { libraryViewModel.checkForUpdates() },
+                onDownloadAndInstallUpdate = libraryViewModel::downloadAndInstallUpdate,
                 onBack = { navController.popBackStack() }
             )
         }

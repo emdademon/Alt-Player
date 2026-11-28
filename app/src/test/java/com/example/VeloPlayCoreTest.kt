@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.AppThemeConfig
+import com.example.data.GitHubUpdateRepository
 import com.example.data.MediaStoreVideoRepository
 import com.example.data.SortOption
 import com.example.data.SortOrder
@@ -15,6 +17,7 @@ import com.example.data.formatFileSize
 import com.example.data.sortVideos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,18 +29,40 @@ import org.robolectric.annotation.Config
 class VeloPlayCoreTest {
 
     @Test
-    fun `manifest has zero network permissions`() {
+    fun `manifest declares scoped update network and installer access`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val pkgInfo = context.packageManager.getPackageInfo(
             context.packageName,
             PackageManager.GET_PERMISSIONS
         )
         val requested = pkgInfo.requestedPermissions?.toList().orEmpty()
-        assertFalse("INTERNET must not be requested", requested.contains(Manifest.permission.INTERNET))
-        assertFalse(
-            "ACCESS_NETWORK_STATE must not be requested",
+        assertTrue("INTERNET is required for GitHub OTA and theme sync", requested.contains(Manifest.permission.INTERNET))
+        assertTrue(
+            "ACCESS_NETWORK_STATE is required for update checks",
             requested.contains(Manifest.permission.ACCESS_NETWORK_STATE)
         )
+        assertTrue(
+            "REQUEST_INSTALL_PACKAGES is required for APK updates",
+            requested.contains(Manifest.permission.REQUEST_INSTALL_PACKAGES)
+        )
+        assertNotNull(
+            "FileProvider must expose the update cache through the app authority",
+            context.packageManager.resolveContentProvider(
+                "${context.packageName}.fileprovider",
+                PackageManager.GET_META_DATA
+            )
+        )
+    }
+
+    @Test
+    fun `remote theme defaults and OTA version comparison are deterministic`() {
+        val theme = AppThemeConfig.parse(AppThemeConfig.DEFAULT_JSON)
+        assertEquals("Midnight Indigo", theme.themeName)
+        assertEquals("#090A0F", theme.background)
+        assertEquals("#6366F1", theme.primaryAccent)
+        assertTrue(GitHubUpdateRepository.isVersionNewer("v1.3", "1.2"))
+        assertFalse(GitHubUpdateRepository.isVersionNewer("1.2", "1.2.0"))
+        assertFalse(GitHubUpdateRepository.isVersionNewer("1.1", "1.2"))
     }
 
     @Test

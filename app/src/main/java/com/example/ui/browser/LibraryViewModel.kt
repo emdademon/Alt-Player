@@ -8,7 +8,11 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.BuildConfig
+import com.example.data.AppUpdateUiState
+import com.example.data.ApkInstallResult
 import com.example.data.DefaultOrientation
+import com.example.data.GitHubUpdateRepository
 import com.example.data.LibraryTab
 import com.example.data.LicenseTier
 import com.example.data.MediaAccessState
@@ -19,7 +23,10 @@ import com.example.data.PrivateVaultRepository
 import com.example.data.ProActivationResult
 import com.example.data.ProLicenseManager
 import com.example.data.ProLicenseState
+import com.example.data.RemoteThemeRepository
 import com.example.data.ResumeBehavior
+import com.example.data.ThemePreferences
+import com.example.data.UpdateStatus
 import com.example.data.SortOption
 import com.example.data.SortOrder
 import com.example.data.VideoFolder
@@ -29,9 +36,11 @@ import com.example.data.sortFolders
 import com.example.data.sortVideos
 import com.example.player.SubtitleStyleConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,6 +69,10 @@ data class LibraryUiState(
     val privatePinHash: String? = null,
     val subtitleStyle: SubtitleStyleConfig = SubtitleStyleConfig(),
     val proLicense: ProLicenseState = ProLicenseState(),
+    val themePreferences: ThemePreferences = ThemePreferences(),
+    val isRefreshingTheme: Boolean = false,
+    val themeSyncMessage: String? = null,
+    val appUpdate: AppUpdateUiState = AppUpdateUiState(),
     val vaultVideos: List<VideoItem> = emptyList(),
     val positionsByUri: Map<String, Long> = emptyMap(),
     val watchedUris: Set<String> = emptySet(),
@@ -80,11 +93,14 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val videoRepo = MediaStoreVideoRepository(application)
     private val prefsRepo = PlaybackPreferencesRepository(application)
     private val vaultRepo = PrivateVaultRepository(application)
+    private val themeRepo = RemoteThemeRepository(application)
+    private val updateRepo = GitHubUpdateRepository(application)
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
     private var latestPrefs = PlaybackPreferencesSnapshot()
+    private var updateCheckJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -117,6 +133,17 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
+        viewModelScope.launch {
+            themeRepo.preferencesFlow.collect { preferences ->
+                _uiState.update { it.copy(themePreferences = preferences) }
+            }
+        }
+        viewModelScope.launch {
+            if (themeRepo.preferencesFlow.first().useRemoteTheme) {
+                refreshRemoteTheme()
+            }
+        }
+        checkForUpdates(silent = true)
         refreshPermissionAndScan()
         refreshVault()
     }
@@ -228,6 +255,149 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun setSubtitleStyle(style: SubtitleStyleConfig) {
         viewModelScope.launch { prefsRepo.saveSubtitleStyle(style) }
+    }
+
+    fun setRemoteThemeEnabled(enabled: Boolean) {
+        _uiState.update {
+            it.copy(
+                themePreferences = it.themePreferences.copy(useRemoteTheme = enabled),
+                themeSyncMessage = null
+            )
+        }
+        viewModelScope.launch { themeRepo.setRemoteThemeEnabled(enabled) }
+        if (enabled) refreshRemoteTheme(force = true)
+    }
+
+    fun refreshRemoteTheme(force: Boolean = false) {
+        if (!force && !_uiState.value.themePreferences.useRemoteTheme) return
+        _uiState.update { it.copy(isRefreshingTheme = true, themeSyncMessage = null) }
+        viewModelScope.launch {
+            val result = themeRepo.fetchAndStoreRemoteTheme()
+            result.onSuccess { theme ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshingTheme = false,
+                        themeSyncMessage = "Synced ${theme.themeName}"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshingTheme = false,
+                        themeSyncMessage = error.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "Theme sync failed"
+                    )
+                }
+            }
+        }
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        updateCheckJob?.cancel()
+        if (!silent) {
+            _uiState.update {
+                it.copy(
+                    appUpdate = AppUpdateUiState(
+                        status = UpdateStatus.CHECKING,
+                        message = "Checking GitHub for updates…"
+                    )
+                )
+            }
+        }
+        updateCheckJob = viewModelScope.launch {
+            if (silent) {
+                _uiState.update {
+                    it.copy(appUpdate = it.appUpdate.copy(status = UpdateStatus.CHECKING))
+                }
+            }
+            val result = updateRepo.checkForUpdate(BuildConfig.VERSION_NAME)
+            result.onSuccess { update ->
+                _uiState.update {
+                    it.copy(
+                        appUpdate = if (update == null) {
+                            AppUpdateUiState(
+                                status = UpdateStatus.UP_TO_DATE,
+                                message = "You are running the latest version."
+                            )
+                        } else {
+                            AppUpdateUiState(
+                                status = UpdateStatus.AVAILABLE,
+                                availableUpdate = update,
+                                message = "Version ${update.versionName} is ready to download."
+                            )
+                        }
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        appUpdate = AppUpdateUiState(
+                            status = UpdateStatus.ERROR,
+                            message = error.message?.takeIf { message -> message.isNotBlank() }
+                                ?: "Could not check GitHub for updates."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        val update = _uiState.value.appUpdate.availableUpdate ?: return
+        _uiState.update {
+            it.copy(
+                appUpdate = it.appUpdate.copy(
+                    status = UpdateStatus.DOWNLOADING,
+                    downloadProgress = 0,
+                    message = "Downloading ${update.assetName}…"
+                )
+            )
+        }
+        viewModelScope.launch {
+            val result = updateRepo.downloadApk(update) { progress ->
+                _uiState.update {
+                    it.copy(appUpdate = it.appUpdate.copy(downloadProgress = progress))
+                }
+            }
+            result.onSuccess { apkFile ->
+                runCatching { updateRepo.startInstaller(apkFile) }
+                    .onSuccess { installResult ->
+                        val message = when (installResult) {
+                            ApkInstallResult.STARTED -> "Android installer opened."
+                            ApkInstallResult.PERMISSION_REQUIRED ->
+                                "Allow installs from Alt Player, then tap Download & Install again."
+                        }
+                        _uiState.update {
+                            it.copy(
+                                appUpdate = it.appUpdate.copy(
+                                    status = UpdateStatus.AVAILABLE,
+                                    message = message,
+                                    downloadProgress = 100
+                                )
+                            )
+                        }
+                    }
+                    .onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                appUpdate = it.appUpdate.copy(
+                                    status = UpdateStatus.ERROR,
+                                    message = error.message ?: "Could not open Android installer."
+                                )
+                            )
+                        }
+                    }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        appUpdate = it.appUpdate.copy(
+                            status = UpdateStatus.ERROR,
+                            message = error.message ?: "Update download failed."
+                        )
+                    )
+                }
+            }
+        }
     }
 
     fun startThreeDayTrial() {

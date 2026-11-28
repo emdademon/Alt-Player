@@ -65,6 +65,7 @@ import com.example.ui.components.RenameVideoDialog
 import com.example.ui.components.SortOptionsSheet
 import com.example.ui.components.VideoCard
 import com.example.ui.theme.AmoledBlack
+import com.example.ui.theme.DeepNavySurface
 import com.example.ui.theme.ElectricCyan
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -159,7 +160,7 @@ fun FolderDetailScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0C1A16), AmoledBlack, AmoledBlack)
+                        colors = listOf(DeepNavySurface, AmoledBlack, AmoledBlack)
                     )
                 )
                 .padding(innerPadding)
